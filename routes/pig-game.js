@@ -10,20 +10,20 @@ const pool = mysql.createPool({
 });
 
 
-/* GET users listing. */
-// router.get('/', function (req, res, next) {
-//     const fs = req('fs');
-//     let rawdata = fs.readFilesync('pig-game');
-//     res.send('respond with a resource');
-//     pool.getConnection(function (err, connection) {
-//         if (err) throw err;
-//         connection.query("SELECT * FROM pig-game", function (err, result, fields) {
-//             connection.release();
-//             if (err) throw err;
-//             console.log(result);
-//         });
-//     });
-// });
+router.post('/start', function (req, res, next) {
+    pool.getConnection(function (err, connection) {
+        if (err) throw err;
+
+        let sql = `UPDATE pig SET roundScore = '0', history = '0'`;
+        connection.query(sql, function (err, result, fields) {
+            connection.release();
+            if (err) throw err;
+            console.log(sql);
+            console.log(result);
+            res.json({success: true});
+        });
+    });
+});
 
 
 router.post('/roll-dice', function (req, res, next) {
@@ -33,7 +33,25 @@ router.post('/roll-dice', function (req, res, next) {
         const activePlayer = req.body.activePlayer;
         const history = req.body.history;
 
-        let sql = `INSERT INTO pig (activePlayer, history) VALUES ('${activePlayer}', '${history}')`;
+        let sql = `UPDATE INTO pig (activePlayer, history) VALUES ('${activePlayer}', '${history}')`;
+        connection.query(sql, function (err, result, fields) {
+            connection.release();
+            if (err) throw err;
+            console.log(sql);
+            console.log(result);
+            res.json({success: true});
+        });
+    });
+});
+
+router.post('/hold', function(req, res, next) {
+    pool.getConnection(function(err, connection) {
+        if (err) throw err;
+
+        const activePlayer = req.body.activePlayer;
+        const roundScore = req.body.roundScore;
+
+        let sql = `UPDATE pig SET roundScore = '${roundScore}' WHERE activePlayer = ${activePlayer}`;
         connection.query(sql, function (err, result, fields) {
             connection.release();
             if (err) throw err;

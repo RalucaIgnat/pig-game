@@ -44,18 +44,18 @@ document.querySelector('.btn-roll').addEventListener('click', function () {
 
 
         //TODO - separate insert from update
-        // if (gamePlaying) {
-        //     $.ajax({
-        //         url: '/pig-game/roll-dice',
-        //         method: 'POST',
-        //         data: {
-        //             activePlayer: activePlayer,
-        //             history: history.textContent
-        //         }
-        //     }).done(function (response) {
-        //         //
-        //     })
-        // }
+        if (gamePlaying) {
+            $.ajax({
+                url: '/pig-game/roll-dice',
+                method: 'POST',
+                data: {
+                    activePlayer: activePlayer,
+                    history: history.textContent
+                }
+            }).done(function (response) {
+                //
+            })
+        }
     }
 });
 
@@ -78,11 +78,12 @@ document.querySelector('.btn-hold').addEventListener('click', function () {
         //     url: '/hold',
         //     method: 'POST',
         //     data: {
+        //         activePlayer: activePlayer,
         //         roundScore: roundScore
         //     }
         // }).done(function (response) {
         //     //
-        // })
+        // });
 
         // Check if player won the game
         if (scores[activePlayer] >= (finalScore ? finalScore : 20)) {
@@ -135,6 +136,13 @@ function init() {
     document.querySelector('.player-0-panel').classList.remove('active');
     document.querySelector('.player-1-panel').classList.remove('active');
     document.querySelector('.player-0-panel').classList.add('active');
+
+    $.ajax({
+        url: '/pig-game/start',
+        method: 'POST'
+    }).done(function (response) {
+        //
+    });
 }
 
 // document.querySelector('.btn-roll')[0].addEventListener('click', function() {
