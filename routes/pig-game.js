@@ -32,8 +32,9 @@ router.post('/roll-dice', function (req, res, next) {
 
         const activePlayer = req.body.activePlayer;
         const history = req.body.history;
-
-        let sql = `UPDATE INTO pig (activePlayer, history) VALUES ('${activePlayer}', '${history}')`;
+        // TODO update
+        let sql = `UPDATE pig SET history = '${history}' WHERE activePlayer = ${activePlayer}`;
+        //let sql = `INSERT INTO pig (activePlayer, history) VALUES ('${activePlayer}', '${history}')`;
         connection.query(sql, function (err, result, fields) {
             connection.release();
             if (err) throw err;
@@ -50,6 +51,7 @@ router.post('/hold', function(req, res, next) {
 
         const activePlayer = req.body.activePlayer;
         const roundScore = req.body.roundScore;
+        console.log(activePlayer, roundScore);
 
         let sql = `UPDATE pig SET roundScore = '${roundScore}' WHERE activePlayer = ${activePlayer}`;
         connection.query(sql, function (err, result, fields) {

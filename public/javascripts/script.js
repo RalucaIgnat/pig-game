@@ -9,83 +9,111 @@ GAME RULES:
 
 */
 
-var scores, roundScore, activePlayer, gamePlaying;
+let scores, roundScore, activePlayer, gamePlaying;
+
+// history:
+// 1: [[3,4,1],[4,6]]
+let playersHistory = {
+    0:[[]],
+    1:[[]]
+};
+
 
 init();
+
+function saveDice(history) {
+    console.info('save history', history);
+    $.ajax({
+        url: '/pig-game/roll-dice',
+        method: 'POST',
+        data: {
+            activePlayer: activePlayer,
+            history: JSON.stringify(history)
+        }
+    }).done(function (response) {
+        console.log(response);
+    });
+}
 
 
 document.querySelector('.btn-roll').addEventListener('click', function () {
     if (gamePlaying) {
         // 1. Random number
-        var dice = Math.floor(Math.random() * 6) + 1;
-
+        let dice = Math.floor(Math.random() * 6) + 1;
         //2. Display the result
-        var diceDOM = document.querySelector('.dice');
+        let diceDOM = document.querySelector('.dice');
         diceDOM.style.display = 'block';
-        diceDOM.src = '../images/dice-' + dice + '.png';
+        diceDOM.src = '/images/dice-' + dice + '.png';
 
-        // if (dice === 1) {
+        //  if (dice === 1) {
         //     nextPlayer();
-        // } else {
-        //Add score
-        //document.querySelector('#current-' + activePlayer).textContent = roundScore;
+        //  } else {
+        //
+        // //Add score
+        // document.querySelector('#current-' + activePlayer).textContent = roundScore;
         roundScore += dice;
-        var history = document.querySelector('#current-' + activePlayer);
+        let activePlayerCurrentScore = document.querySelector('#current-' + activePlayer);
+        let activePlayerHistoryElement = document.querySelector(`.player-${activePlayer}-panel .history`);
 
-        if (history.textContent == 0) {
-            history.textContent = dice;
+       // console.log(activePlayerHistoryElement);
+
+        if (activePlayerCurrentScore.textContent == 0) {
+            activePlayerCurrentScore.textContent = dice;
         } else {
-            history.textContent += ' + ' + dice;
-            // nextPlayer();
+            activePlayerCurrentScore.textContent = parseInt(activePlayerCurrentScore.textContent) + dice;
         }
-        // }
-
-        console.log('after history', history.textContent);
 
 
-        //TODO - separate insert from update
+        let activePlayerHistory = playersHistory[activePlayer];
+        // if(activePlayerHistory.length === 0 || true) {
+        //     activePlayerHistory.push([dice]);
+        // } else {
+            activePlayerHistory[activePlayerHistory.length-1].push(dice);
+        //}
+        activePlayerHistoryElement.innerHTML = JSON.stringify(activePlayerHistory);
+
+        console.log('after history', activePlayerCurrentScore.textContent);
+        console.log('active player', activePlayer);
+        console.log('history', activePlayerCurrentScore.textContent);
+
+
         if (gamePlaying) {
-            $.ajax({
-                url: '/pig-game/roll-dice',
-                method: 'POST',
-                data: {
-                    activePlayer: activePlayer,
-                    history: history.textContent
-                }
-            }).done(function (response) {
-                //
-            })
+            saveDice(activePlayerHistory);
         }
     }
 });
 
-//todo - call /start
+
 //  } else {
 //      //Next player
 //      nextPlayer();
 
 document.querySelector('.btn-hold').addEventListener('click', function () {
-    if (gamePlaying) {
-        let finalScore = document.querySelector('.final-score').value;
-        // Add CURRENT score to GLOBAL score
-        scores[activePlayer] += roundScore;
 
-        // Update the UI
+    if (gamePlaying) {
+
+        let finalScore = document.querySelector('.final-score').value;
+        // // Add CURRENT score to GLOBAL score
+        scores[activePlayer] += roundScore;
+        // // Update the UI
         document.querySelector('#score-' + activePlayer).textContent = scores[activePlayer];
 
+        playersHistory[activePlayer].push([]);
+
         //todo
-        // $.ajax({
-        //     url: '/hold',
-        //     method: 'POST',
-        //     data: {
-        //         activePlayer: activePlayer,
-        //         roundScore: roundScore
-        //     }
-        // }).done(function (response) {
-        //     //
-        // });
+        $.ajax({
+            url: '/pig-game/hold',
+            method: 'POST',
+            data: {
+                activePlayer: activePlayer,
+                roundScore: roundScore,
+            }
+        }).done(function (response) {
+            //
+        });
 
         // Check if player won the game
+
         if (scores[activePlayer] >= (finalScore ? finalScore : 20)) {
             document.querySelector('#name-' + activePlayer).textContent = 'Winner!';
             document.querySelector('.dice').style.display = 'none';
@@ -106,24 +134,23 @@ function nextPlayer() {
 
     document.getElementById('current-0').textContent = '0';
     document.getElementById('current-1').textContent = '0';
-
     document.querySelector('.player-0-panel').classList.toggle('active');
     document.querySelector('.player-1-panel').classList.toggle('active');
-
-    //document.querySelector('.player-0-panel').classList.remove('active');
-    //document.querySelector('.player-1-panel').classList.add('active');
-
     document.querySelector('.dice').style.display = 'none';
 }
 
 document.querySelector('.btn-new').addEventListener('click', init);
 
-function init() {
-    scores = [0, 0];
-    activePlayer = 0;
-    roundScore = 0;
-    gamePlaying = true;
+function startNewGame() {
+    $.ajax({
+        url: '/pig-game/start',
+        method: 'POST'
+    }).done(function (response) {
 
+    });
+}
+
+function resetHtml() {
     document.querySelector('.dice').style.display = 'none';
     document.getElementById('score-0').textContent = '0';
     document.getElementById('score-1').textContent = '0';
@@ -137,25 +164,18 @@ function init() {
     document.querySelector('.player-1-panel').classList.remove('active');
     document.querySelector('.player-0-panel').classList.add('active');
 
-    $.ajax({
-        url: '/pig-game/start',
-        method: 'POST'
-    }).done(function (response) {
-        //
-    });
 }
 
-// document.querySelector('.btn-roll')[0].addEventListener('click', function() {
-// // console.log('Button clicked');
-//     if (dice !== 1) {
-//         //Add score
-//         //document.querySelector('#current-' + activePlayer).textContent = roundScore;
-//         roundScore += dice;
-//         history = document.querySelector('#current-' + activePlayer);
-//
-//         history.textContent += ' + ' + roundScore;
-//
-//
+function init() {
+    // TODO load data from sever (past tries)
+    scores = [0, 0];
+    roundScore = 0;
+    activePlayer = 0;
+    gamePlaying = true;
+
+    resetHtml();
+    startNewGame();
+}
 
 
 //document.querySelector('#current-' + activePlayer).textContent = dice;
