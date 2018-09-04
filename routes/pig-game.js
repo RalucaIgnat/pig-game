@@ -14,7 +14,7 @@ router.post('/start', function (req, res, next) {
     pool.getConnection(function (err, connection) {
         if (err) throw err;
 
-        let sql = `UPDATE pig SET roundScore = '0', history = '0'`;
+        const sql = `UPDATE pig SET roundScore = '0', history = '[[]]'`;
         connection.query(sql, function (err, result, fields) {
             connection.release();
             if (err) throw err;

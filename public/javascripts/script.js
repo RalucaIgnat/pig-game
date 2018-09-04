@@ -9,19 +9,9 @@ GAME RULES:
 
 */
 
-let scores, roundScore, activePlayer, gamePlaying;
+let scores, roundScore, activePlayer, gamePlaying, playersHistory;
 
-// history:
-// 1: [[3,4,1],[4,6]]
-let playersHistory = {
-    0:[[]],
-    1:[[]]
-};
-
-
-init();
-
-function saveDice(history) {
+function saveHistory(history) {
     console.info('save history', history);
     $.ajax({
         url: '/pig-game/roll-dice',
@@ -35,64 +25,97 @@ function saveDice(history) {
     });
 }
 
-
-document.querySelector('.btn-roll').addEventListener('click', function () {
-    if (gamePlaying) {
-        // 1. Random number
-        let dice = Math.floor(Math.random() * 6) + 1;
-        //2. Display the result
-        let diceDOM = document.querySelector('.dice');
-        diceDOM.style.display = 'block';
-        diceDOM.src = '/images/dice-' + dice + '.png';
-
-        //  if (dice === 1) {
-        //     nextPlayer();
-        //  } else {
+function saveScore() {
+    $.ajax({
+        url: '/pig-game/hold',
+        method: 'POST',
+        data: {
+            activePlayer: activePlayer,
+            roundScore: roundScore,
+        }
+    }).done(function (response) {
         //
-        // //Add score
-        // document.querySelector('#current-' + activePlayer).textContent = roundScore;
-        roundScore += dice;
-        let activePlayerCurrentScore = document.querySelector('#current-' + activePlayer);
-        let activePlayerHistoryElement = document.querySelector(`.player-${activePlayer}-panel .history`);
+    });
+}
 
-       // console.log(activePlayerHistoryElement);
+function onStartNewGame() {
+    $.ajax({
+        url: '/pig-game/start',
+        method: 'POST'
+    }).done(function (response) {
+        window.location.reload();
+    });
+}
 
-        if (activePlayerCurrentScore.textContent == 0) {
-            activePlayerCurrentScore.textContent = dice;
+
+function generateDice() {
+    let dice = Math.floor(Math.random() * 6) + 1;
+    //2. Display the result
+    let diceDOM = document.querySelector('.dice');
+    diceDOM.style.display = 'block';
+    diceDOM.src = '/images/dice-' + dice + '.png';
+    return dice;
+}
+
+
+function showWinner() {
+    console.warn('game finished');
+    document.querySelector('#name-' + activePlayer).textContent = 'Winner!';
+    document.querySelector('.dice').style.display = 'none';
+    document.querySelector('.player-' + activePlayer + '-panel').classList.add('winner');
+    document.querySelector('.player-' + activePlayer + '-panel').classList.remove('active');
+    gamePlaying = false;
+}
+
+function refreshCurrentScore(dice) {
+    let activePlayerCurrentScore = document.querySelector('#current-' + activePlayer);
+    if (activePlayerCurrentScore.textContent === 0) {
+        activePlayerCurrentScore.textContent = dice;
+    } else {
+        activePlayerCurrentScore.textContent = parseInt(activePlayerCurrentScore.textContent) + dice;
+    }
+}
+
+function refreshCurrentHistory(dice) {
+    let activePlayerHistoryElement = document.querySelector(`.player-${activePlayer}-panel .history`);
+    let activePlayerHistory = playersHistory[activePlayer];
+    activePlayerHistory[activePlayerHistory.length - 1].push(dice);
+    // TODO show with 'bold' the ones that impacted final score
+    activePlayerHistoryElement.innerHTML = JSON.stringify(activePlayerHistory);
+    return activePlayerHistory;
+}
+
+function onRollDice() {
+    if (gamePlaying) {
+        let dice = generateDice();
+
+        if (dice === 1) {
+            console.info('reset score');
+            roundScore = 0;
         } else {
-            activePlayerCurrentScore.textContent = parseInt(activePlayerCurrentScore.textContent) + dice;
+            roundScore += dice;
         }
 
+        refreshCurrentScore(dice);
 
-        let activePlayerHistory = playersHistory[activePlayer];
-        // if(activePlayerHistory.length === 0 || true) {
-        //     activePlayerHistory.push([dice]);
-        // } else {
-            activePlayerHistory[activePlayerHistory.length-1].push(dice);
-        //}
-        activePlayerHistoryElement.innerHTML = JSON.stringify(activePlayerHistory);
+        let activePlayerHistory = refreshCurrentHistory(dice);
 
-        console.log('after history', activePlayerCurrentScore.textContent);
-        console.log('active player', activePlayer);
-        console.log('history', activePlayerCurrentScore.textContent);
+        console.log('history', activePlayer, activePlayerHistory);
 
+        saveHistory(activePlayerHistory);
 
-        if (gamePlaying) {
-            saveDice(activePlayerHistory);
+        if (dice === 1) {
+            console.warn('a cazut nr:', dice);
+            console.info('move to next player');
+            activePlayerHistory.push([]);
+            nextPlayer();
         }
     }
-});
+}
 
-
-//  } else {
-//      //Next player
-//      nextPlayer();
-
-document.querySelector('.btn-hold').addEventListener('click', function () {
-
+function onHold() {
     if (gamePlaying) {
-
-        let finalScore = document.querySelector('.final-score').value;
+        let finalScore = document.querySelector('.final-score').value || 20;
         // // Add CURRENT score to GLOBAL score
         scores[activePlayer] += roundScore;
         // // Update the UI
@@ -100,54 +123,29 @@ document.querySelector('.btn-hold').addEventListener('click', function () {
 
         playersHistory[activePlayer].push([]);
 
-        //todo
-        $.ajax({
-            url: '/pig-game/hold',
-            method: 'POST',
-            data: {
-                activePlayer: activePlayer,
-                roundScore: roundScore,
-            }
-        }).done(function (response) {
-            //
-        });
+        saveScore();
 
         // Check if player won the game
 
-        if (scores[activePlayer] >= (finalScore ? finalScore : 20)) {
-            document.querySelector('#name-' + activePlayer).textContent = 'Winner!';
-            document.querySelector('.dice').style.display = 'none';
-            document.querySelector('.player-' + activePlayer + '-panel').classList.add('winner');
-            document.querySelector('.player-' + activePlayer + '-panel').classList.remove('active');
-            gamePlaying = false;
+        if (scores[activePlayer] >= finalScore) {
+            showWinner();
         } else {
             //Next player
             nextPlayer();
         }
     }
-});
+}
 
 function nextPlayer() {
-    //Next player
-    activePlayer === 0 ? activePlayer = 1 : activePlayer = 0;
+    activePlayer = activePlayer === 0 ? 1 : 0;
     roundScore = 0;
 
     document.getElementById('current-0').textContent = '0';
     document.getElementById('current-1').textContent = '0';
+    document.querySelector('.dice').style.display = 'none';
+    // change current active
     document.querySelector('.player-0-panel').classList.toggle('active');
     document.querySelector('.player-1-panel').classList.toggle('active');
-    document.querySelector('.dice').style.display = 'none';
-}
-
-document.querySelector('.btn-new').addEventListener('click', init);
-
-function startNewGame() {
-    $.ajax({
-        url: '/pig-game/start',
-        method: 'POST'
-    }).done(function (response) {
-
-    });
 }
 
 function resetHtml() {
@@ -163,21 +161,26 @@ function resetHtml() {
     document.querySelector('.player-0-panel').classList.remove('active');
     document.querySelector('.player-1-panel').classList.remove('active');
     document.querySelector('.player-0-panel').classList.add('active');
-
 }
 
-function init() {
+function loadGame() {
+    //resetHtml();
     // TODO load data from sever (past tries)
-    scores = [0, 0];
+    gamePlaying = true;
     roundScore = 0;
     activePlayer = 0;
-    gamePlaying = true;
-
-    resetHtml();
-    startNewGame();
+    // TODO load & show
+    scores = [0, 0];
+    // TODO load & show
+    playersHistory = {
+        0:[[ ]],
+        1:[[]]
+    }
 }
 
+document.querySelector('.btn-new').addEventListener('click', onStartNewGame);
+document.querySelector('.btn-roll').addEventListener('click', onRollDice);
+document.querySelector('.btn-hold').addEventListener('click', onHold);
 
-//document.querySelector('#current-' + activePlayer).textContent = dice;
-//document.querySelector('#current-' + activePlayer).innerHTML = '<em>' + dice + '</em>';
-//var x = document.querySelector('#score-0').textContent;
+//start
+loadGame();
